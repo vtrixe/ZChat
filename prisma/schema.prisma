@@ -1,0 +1,74 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  recoveryPhrase    String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  messagesSent      Message[]     @relation("userMessagesSent")
+  messagesReceived  Message[]     @relation("userMessagesReceived")
+  callRecordsAsCaller   CallRecord[] @relation("CallRecordsAsCaller")
+  callRecordsAsReceiver CallRecord[] @relation("CallRecordsAsReceiver")
+  blocks             BlockedUsers[] @relation("UserBlocks")
+  blocksBy           BlockedUsers[] @relation("UserBlockedBy")
+  mutes              MutedUsers[]   @relation("UserMutes")
+  mutesBy            MutedUsers[]   @relation("UserMutedBy")
+}
+
+model Message {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  content     String?   // For text messages
+  audioFile   String?   // URL/path to audio file
+  imageFile   String?   // URL/path to image file
+  senderId    String    @db.ObjectId
+  sender      User      @relation(name: "userMessagesSent", fields: [senderId], references: [id])
+  receiverId  String    @db.ObjectId
+  receiver    User      @relation(name: "userMessagesReceived", fields: [receiverId], references: [id])
+  status      MessageStatus
+  createdAt   DateTime  @default(now())
+}
+
+enum MessageStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model CallRecord {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  callerId    String   @db.ObjectId
+  caller      User     @relation(name: "CallRecordsAsCaller", fields: [callerId], references: [id])
+  receiverId  String   @db.ObjectId
+  receiver    User     @relation(name: "CallRecordsAsReceiver", fields: [receiverId], references: [id])
+  callType    CallType
+  createdAt   DateTime @default(now())
+}
+
+enum CallType {
+  AUDIO
+  VIDEO
+}
+
+// Relation models for blocking and muting
+model BlockedUsers {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  blockerId  String   @db.ObjectId
+  blockedId  String   @db.ObjectId
+  blocker    User     @relation(name: "UserBlocks", fields: [blockerId], references: [id])
+  blocked    User     @relation(name: "UserBlockedBy", fields: [blockedId], references: [id])
+}
+
+model MutedUsers {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  muterId    String   @db.ObjectId
+  mutedId    String   @db.ObjectId
+  muter      User     @relation(name: "UserMutes", fields: [muterId], references: [id])
+  muted      User     @relation(name: "UserMutedBy", fields: [mutedId], references: [id])
+}
